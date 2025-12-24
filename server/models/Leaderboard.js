@@ -36,7 +36,31 @@ async function getTopProgressPerformers(courseId, limit = 10) {
   return progressList.sort((a, b) => b.percentComplete - a.percentComplete).slice(0, limit);
 }
 
+/**
+ * Get top students by quiz scores globally
+ * @param {Number} limit
+ * @returns {Promise<Array>} Array of { studentId, totalQuizScore }
+ */
+async function getGlobalTopQuizPerformers(limit = 10) {
+  // Aggregate all enrollments
+  const enrollments = await Enrollment.find({}).populate('student', 'fullName');
+  const studentScores = {};
+  enrollments.forEach(enrollment => {
+    const studentId = enrollment.student._id.toString();
+    const studentName = enrollment.student.fullName;
+    const totalQuizScore = enrollment.scores.reduce((sum, s) => sum + (s.score || 0), 0);
+    if (studentScores[studentId]) {
+      studentScores[studentId].totalQuizScore += totalQuizScore;
+    } else {
+      studentScores[studentId] = { totalQuizScore, studentName };
+    }
+  });
+  const scores = Object.values(studentScores);
+  return scores.sort((a, b) => b.totalQuizScore - a.totalQuizScore).slice(0, limit);
+}
+
 module.exports = {
   getTopQuizPerformers,
-  getTopProgressPerformers
+  getTopProgressPerformers,
+  getGlobalTopQuizPerformers
 };

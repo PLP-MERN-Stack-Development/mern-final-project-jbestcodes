@@ -19,7 +19,8 @@ const studentSchema = new mongoose.Schema({
   password: { type: String, required: true },
   enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
   examScores: [examScoreSchema],
-  progress: [progressSchema]
+  progress: [progressSchema],
+  active: { type: Boolean, default: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Student', studentSchema);

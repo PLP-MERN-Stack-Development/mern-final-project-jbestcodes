@@ -3,6 +3,44 @@
 
 const Student = require('../models/Student');
 const Enrollment = require('../models/Enrollment');
+const Course = require('../models/Course');
+
+// List instructor's students
+exports.listMyStudents = async (req, res) => {
+  try {
+    const instructorId = req.user.id;
+    const courses = await Course.find({ instructor: instructorId }).select('_id');
+    const courseIds = courses.map(c => c._id);
+    const enrollments = await Enrollment.find({ course: { $in: courseIds } }).populate('student', 'name email').populate('course', 'title');
+    const students = enrollments.map(e => ({
+      _id: e.student._id,
+      name: e.student.name,
+      email: e.student.email,
+      enrolledCourses: [e.course.title] // Simplify, or aggregate
+    }));
+    // Remove duplicates
+    const uniqueStudents = students.filter((s, index, self) => self.findIndex(t => t._id === s._id) === index);
+    res.json(uniqueStudents);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Deactivate student
+exports.deactivateStudent = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    // Remove from all enrollments
+    await Enrollment.deleteMany({ student: studentId });
+    // Update courses to remove student
+    await Course.updateMany({}, { $pull: { enrolledStudents: studentId } });
+    // Optionally, mark student as inactive
+    await Student.findByIdAndUpdate(studentId, { active: false });
+    res.json({ message: 'Student deactivated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 // Get student profile
 exports.getProfile = async (req, res) => {
